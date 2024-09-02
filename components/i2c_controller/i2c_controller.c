@@ -12,13 +12,14 @@
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50)
 // TODO: Tighten this delay
 #define SUB_REBOOT_DELAY_MS 800
-static const char *TAG = "i2c:comm";
+static const char *TAG = "i2c_comm";
 static uint32_t i2c_frequency = 100 * 1000;
 
 int initializedSubChannels[TARGET_SUBS];
 sub_config_t subIds[TARGET_SUBS];
 i2c_master_bus_handle_t tool_bus_handle;
-
+i2c_master_dev_handle_t dev_handle;
+int i2c_last_channel = 0;
 
 char *sub_connection_error_tToString(sub_connection_error_t error) {
     // these need to align with the order in the sub_connection_error_t
@@ -60,40 +61,39 @@ void setup() {
 }
 
 char *check_channel_for_sub(int channel_id, int next_avail_reserved) {
-    int error = domWriteWire(channel_id, "identify");
-    if (error == 0)
-    {
-        ESP_LOGD(TAG, "Found device");
-    }
-    else if (error == 2)
-    {
-        // NACK / No response
-        return sub_connection_error_tToString(NoDevice);
-    }
-    else if (error == 4)
-    {
-        ESP_LOGD(TAG, "Unknown error");
-        int reinitError = domWriteWire(channel_id, "reinit");
-        if (reinitError != 0) {
-            ESP_LOGD(TAG, "REINIT ERROR %d", reinitError);
-        }
-        return sub_connection_error_tToString(Collision);
-    }
-    else
-    {
-        ESP_LOGD(TAG, "Error %d", error);
-        return sub_connection_error_tToString(Unhandled);
-    }
-
-    // TODO: Eval if we should revert these 2 lines
-    char *subResult = domReadWire(channel_id, 8);
+    char *subResult = domDemandResponse(channel_id, 8, "identify");
+    // int error = domWriteWire(channel_id, "identify");
+    // if (error == 0)
+    // {
+    //     ESP_LOGD(TAG, "Found device");
+    // }
+    // else if (error == 2)
+    // {
+    //     // NACK / No response
+    //     return sub_connection_error_tToString(NoDevice);
+    // }
+    // else if (error == 4)
+    // {
+    //     ESP_LOGD(TAG, "Unknown error");
+    //     int reinitError = domWriteWire(channel_id, "reinit");
+    //     if (reinitError != 0) {
+    //         ESP_LOGD(TAG, "REINIT ERROR %d", reinitError);
+    //     }
+    //     return sub_connection_error_tToString(Collision);
+    // }
+    // else
+    // {
+    //     ESP_LOGD(TAG, "Error %d", error);
+    //     return sub_connection_error_tToString(Unhandled);
+    // }
+    // char *subResult = domReadWire(channel_id, 8);
     if (subResult == NULL) {
         return sub_connection_error_tToString(Unhandled);
     }
     char *topic = strtok(subResult, ":");
 
-    if (strcmp(topic, "Hello") == 0)
-    {
+    if (strcmp(topic, "Hello") == 0) {
+        ESP_LOGD(TAG, "HELLO DETECTED ON CHANNEL %d", channel_id);
         char *subId = strtok(0, ":");
         if (strlen(subId) == 2 && is_alpha_numeric(subId)) {
             ESP_LOGD(TAG, "SUB DETECTED ON CHANNEL %d WITH ID %s", channel_id, subId);
@@ -261,8 +261,15 @@ char *domReadWire(int channel, int bytesToRead) {
         .device_address = (uint16_t)channel,
     };
     uint8_t *data = malloc(bytesToRead + 1);
-    i2c_master_dev_handle_t dev_handle;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+    if (i2c_last_channel != channel) {
+        if (dev_handle != NULL) {
+            if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
+                return NULL;
+            }
+        }
+        ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+        i2c_last_channel = channel;
+    }
 
     ESP_ERROR_CHECK(i2c_master_receive(dev_handle, data, bytesToRead, -1));
     // esp_err_t ret = i2c_master_receive(dev_handle, data, bytesToRead + 1, I2C_TOOL_TIMEOUT_VALUE_MS);
@@ -276,9 +283,6 @@ char *domReadWire(int channel, int bytesToRead) {
     // } else {
     //     ESP_LOGW(TAG, "Read failed");
     // }
-    if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
-        return NULL;
-    }
     return (char *)data;
 }
 
@@ -289,8 +293,15 @@ int domWriteWire(int channel, char *dataInput) {
         .scl_speed_hz = i2c_frequency,
         .device_address = (uint16_t)channel,
     };
-    i2c_master_dev_handle_t dev_handle;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+    if (i2c_last_channel != channel) {
+        if (dev_handle != NULL) {
+            if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
+                return 1;
+            }
+        }
+        ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+        i2c_last_channel = channel;
+    }
     // if (i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle) != ESP_OK) {
     //     return 1;
     // }
@@ -308,9 +319,6 @@ int domWriteWire(int channel, char *dataInput) {
     // esp_err_t ret = i2c_master_transmit(dev_handle, data, len + 1, I2C_TOOL_TIMEOUT_VALUE_MS);
 
     free(data);
-    if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
-        return 1;
-    }
 
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Write OK");
@@ -323,6 +331,51 @@ int domWriteWire(int channel, char *dataInput) {
         return 2;
     }
     return 1;
+}
+
+char *domDemandResponse(int channel, int responseLength, char *dataInput) {
+    int len = strlen(dataInput);
+
+    i2c_device_config_t i2c_dev_conf = {
+        .scl_speed_hz = i2c_frequency,
+        .device_address = (uint16_t)channel,
+    };
+    if (i2c_last_channel != channel) {
+        if (dev_handle != NULL) {
+            if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
+                return NULL;
+            }
+        }
+        ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+        i2c_last_channel = channel;
+    }
+
+    uint8_t *command_data = malloc(len);
+    if (command_data == NULL) {
+        return NULL; // Memory allocation failed
+    }
+    memcpy(command_data, dataInput, len);
+    // null terminator not needed here, maybe calling functions are adding it? maybe subs are adding it?
+    // data[len + 1] = '\0';
+
+    uint8_t *response_data = malloc(responseLength+1);
+
+    // ESP_ERROR_CHECK(i2c_master_transmit_receive(dev_handle, command_data, len, response_data, responseLength+1, -1));
+    esp_err_t ret = i2c_master_transmit_receive(dev_handle, command_data, len, response_data, responseLength+1, -1);
+    free(command_data);
+    if (ret == ESP_OK) {
+        // Null-terminate the received data to make it a valid string
+        ESP_LOGI(TAG, "Demand sent, untreated %s", response_data);
+        response_data[responseLength] = '\0';
+        ESP_LOGI(TAG, "Demand sent, response %s", response_data);
+    } else if (ret == ESP_ERR_TIMEOUT) {
+        ESP_LOGW(TAG, "Bus is busy");
+        return NULL;
+    } else {
+        ESP_LOGW(TAG, "Demand failed on channel %d", channel);
+        return NULL;
+    }
+    return (char *)response_data;
 }
 
 char* concatenateStrings(int numArgs, ...) {

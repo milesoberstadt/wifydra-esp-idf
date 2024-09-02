@@ -26,3 +26,5 @@ char *domReadWire(int channel, int bytesToRead);
 int domWriteWire(int channel, char *dataInput);
 
 char* concatenateStrings(int count, ...);
+
+char *domDemandResponse(int channel, int responseLength, char *dataInput);
