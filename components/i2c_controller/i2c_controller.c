@@ -124,16 +124,17 @@ char *check_channel_for_sub(int channel_id, int next_avail_reserved) {
             if (validateIdentityMsg == NULL) {
                 return sub_connection_error_tToString(Unhandled);
             }
-            int confirmError = domWriteWire(next_avail_reserved, validateIdentityMsg);
+            // int confirmError = domWriteWire(next_avail_reserved, validateIdentityMsg);
+            char *confirmResult = domDemandResponse(next_avail_reserved, 8, validateIdentityMsg);
             free(validateIdentityMsg);
             // Identify with the expected sub id (so the sub can verify it's being talked to)
-            if (confirmError != 0)
-            {
-                ESP_LOGD(TAG, "Confirm ERROR %d", confirmError);
-                // TODO: Error confirming reassignment
-                return sub_connection_error_tToString(Unhandled);
-            }
-            char *confirmResult = domReadWire(next_avail_reserved, 8);
+            // if (confirmError != 0)
+            // {
+            //     ESP_LOGD(TAG, "Confirm ERROR %d", confirmError);
+            //     // TODO: Error confirming reassignment
+            //     return sub_connection_error_tToString(Unhandled);
+            // }
+            // char *confirmResult = domReadWire(next_avail_reserved, 8);
             if (confirmResult == NULL) {
                 return sub_connection_error_tToString(Unhandled);
             }
