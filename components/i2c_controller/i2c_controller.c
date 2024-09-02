@@ -21,18 +21,18 @@ i2c_master_bus_handle_t tool_bus_handle;
 
 
 char *sub_connection_error_tToString(sub_connection_error_t error) {
-    switch (error)
-    {
+    // these need to align with the order in the sub_connection_error_t
+    switch (error) {
     case Unhandled:
-        return "-1";
+        return "-0";
     case NoDevice:
-        return "-2";
+        return "-1";
     case Collision:
-        return "-3";
+        return "-2";
     case NoResponse:
-        return "-4";
+        return "-3";
     case InvalidIdentity:
-        return "-5";
+        return "-4";
     default:
         return "00";
     }
@@ -43,6 +43,19 @@ void setup() {
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     ESP_LOGD(TAG, "i2c init");
+
+    i2c_master_bus_config_t i2c_bus_conf = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = I2C_NUM_0,
+        .scl_io_num = 22,
+        .sda_io_num = 21,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    if (i2c_new_master_bus(&i2c_bus_conf, &tool_bus_handle) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create I2C bus");
+        return;
+    }
     init_subs();
 }
 
@@ -82,8 +95,7 @@ char *check_channel_for_sub(int channel_id, int next_avail_reserved) {
     if (strcmp(topic, "Hello") == 0)
     {
         char *subId = strtok(0, ":");
-        if (strlen(subId) == 2 && is_alpha_numeric(subId))
-        {
+        if (strlen(subId) == 2 && is_alpha_numeric(subId)) {
             ESP_LOGD(TAG, "SUB DETECTED ON CHANNEL %d WITH ID %s", channel_id, subId);
             // Reassign to reserved space
             char subBuffer[3];
@@ -176,7 +188,7 @@ void init_subs() {
         int responseError = 0;
         if (result[0] == '-')
         {
-            responseError = atoi(result);
+            responseError = abs(atoi(result));
         }
         if (responseError == NoDevice)
         {
@@ -246,71 +258,71 @@ bool is_alpha_numeric(const char *str) {
 char *domReadWire(int channel, int bytesToRead) {
     i2c_device_config_t i2c_dev_conf = {
         .scl_speed_hz = i2c_frequency,
-        .device_address = 0,
+        .device_address = (uint16_t)channel,
     };
     uint8_t *data = malloc(bytesToRead + 1);
     i2c_master_dev_handle_t dev_handle;
-    if (i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle) != ESP_OK) {
-        return NULL;
-    }
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
 
-    esp_err_t ret = i2c_master_transmit_receive(dev_handle, (uint8_t*)&channel, 1, data, bytesToRead, I2C_TOOL_TIMEOUT_VALUE_MS);
+    ESP_ERROR_CHECK(i2c_master_receive(dev_handle, data, bytesToRead, -1));
+    // esp_err_t ret = i2c_master_receive(dev_handle, data, bytesToRead + 1, I2C_TOOL_TIMEOUT_VALUE_MS);
 
-    if (ret == ESP_OK) {
-        // Null-terminate the received data to make it a valid string
-        data[bytesToRead] = '\0';
-        return (char*)data;
-    } else if (ret == ESP_ERR_TIMEOUT) {
-        ESP_LOGW(TAG, "Bus is busy");
-    } else {
-        ESP_LOGW(TAG, "Read failed");
-    }
-    free(data);
+    // if (ret == ESP_OK) {
+    //     // Null-terminate the received data to make it a valid string
+    //     data[bytesToRead] = '\0';
+    //     return (char*)data;
+    // } else if (ret == ESP_ERR_TIMEOUT) {
+    //     ESP_LOGW(TAG, "Bus is busy");
+    // } else {
+    //     ESP_LOGW(TAG, "Read failed");
+    // }
     if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
         return NULL;
     }
-    return NULL;
+    return (char *)data;
 }
 
 int domWriteWire(int channel, char *dataInput) {
-    /* Check chip address: "-c" option */
-    int chip_addr = 0;
-    /* Check data: "-d" option */
     int len = strlen(dataInput);
 
     i2c_device_config_t i2c_dev_conf = {
         .scl_speed_hz = i2c_frequency,
-        .device_address = chip_addr,
+        .device_address = (uint16_t)channel,
     };
     i2c_master_dev_handle_t dev_handle;
-    if (i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle) != ESP_OK) {
-        return 1;
-    }
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle));
+    // if (i2c_master_bus_add_device(tool_bus_handle, &i2c_dev_conf, &dev_handle) != ESP_OK) {
+    //     return 1;
+    // }
 
-    uint8_t *data = malloc(len + 1);
+    uint8_t *data = malloc(len);
     if (data == NULL) {
         return -1; // Memory allocation failed
     }
-    data[0] = (uint8_t)channel;
-    memcpy(&data[1], dataInput, len);
-    // Optionally, you can add a null terminator if needed (e.g., for debugging)
-    // data[len + 1] = '\0'; // This is optional and only if you want to null-terminate the data
+    memcpy(data, dataInput, len);
+    // null terminator not needed here, maybe calling functions are adding it? maybe subs are adding it?
+    // data[len + 1] = '\0';
 
-    // Now, you can send 'data' over I2C (replace this with your actual I2C sending code)
-    esp_err_t ret = i2c_master_transmit(dev_handle, data, len + 1, I2C_TOOL_TIMEOUT_VALUE_MS);
-    if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Write OK");
-    } else if (ret == ESP_ERR_TIMEOUT) {
-        ESP_LOGW(TAG, "Bus is busy");
-    } else {
-        ESP_LOGW(TAG, "Write Failed");
-    }
+    // ESP_ERROR_CHECK(i2c_master_transmit(dev_handle, data, len, -1));
+    esp_err_t ret = i2c_master_transmit(dev_handle, data, len, -1);
+    // esp_err_t ret = i2c_master_transmit(dev_handle, data, len + 1, I2C_TOOL_TIMEOUT_VALUE_MS);
 
     free(data);
     if (i2c_master_bus_rm_device(dev_handle) != ESP_OK) {
         return 1;
     }
-    return 0;
+
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Write OK");
+        return 0;
+    } else if (ret == ESP_ERR_TIMEOUT) {
+        ESP_LOGW(TAG, "Bus is busy");
+        return 2;
+    } else {
+        ESP_LOGW(TAG, "Write Failed on channel %d", channel);
+        return 2;
+    }
+    return 1;
 }
 
 char* concatenateStrings(int numArgs, ...) {
