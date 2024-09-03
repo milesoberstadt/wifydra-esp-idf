@@ -11,17 +11,9 @@ typedef struct {
     int channel;
 } sub_config_t;
 
-void domSetup(void);
+#include "../dom.h"
 
-char *domCheckChannelForSub(int channel_id, int next_avail_reserved);
-
-char *domDemandResponse(int channel, int responseLength, char *dataInput);
-
-void domInitSubs(void);
-
-char *domReadWire(int channel, int bytesToRead);
-
-int domWriteWire(int channel, char *dataInput);
+void subSetup(void);
 
 char* concatenateStrings(int count, ...);
 
