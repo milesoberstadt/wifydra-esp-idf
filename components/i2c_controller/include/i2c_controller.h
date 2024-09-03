@@ -11,15 +11,13 @@ typedef struct {
     int channel;
 } sub_config_t;
 
-void setup(void);
+void domSetup(void);
 
-char *check_channel_for_sub(int channel_id, int next_avail_reserved);
+char *domCheckChannelForSub(int channel_id, int next_avail_reserved);
 
-void init_subs(void);
+char *domDemandResponse(int channel, int responseLength, char *dataInput);
 
-char *sub_connection_error_tToString(sub_connection_error_t error);
-
-bool is_alpha_numeric(const char *str);
+void domInitSubs(void);
 
 char *domReadWire(int channel, int bytesToRead);
 
@@ -27,4 +25,6 @@ int domWriteWire(int channel, char *dataInput);
 
 char* concatenateStrings(int count, ...);
 
-char *domDemandResponse(int channel, int responseLength, char *dataInput);
+bool is_alpha_numeric(const char *str);
+
+char *sub_connection_error_tToString(sub_connection_error_t error);

@@ -3,10 +3,10 @@
 #include <string.h>
 #include "driver/i2c_master.h"
 #include "esp_log.h"
-#include "i2c_controller.h"
 // Include FreeRTOS for delay
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "i2c_controller.h"
 
 #define TARGET_SUBS 2
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50)
@@ -39,7 +39,7 @@ char *sub_connection_error_tToString(sub_connection_error_t error) {
     }
 }
 
-void setup() {
+void domSetup() {
     // delay so I can read serial output in time
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -57,10 +57,10 @@ void setup() {
         ESP_LOGE(TAG, "Failed to create I2C bus");
         return;
     }
-    init_subs();
+    domInitSubs();
 }
 
-char *check_channel_for_sub(int channel_id, int next_avail_reserved) {
+char *domCheckChannelForSub(int channel_id, int next_avail_reserved) {
     char *subResult = domDemandResponse(channel_id, 8, "identify");
     // int error = domWriteWire(channel_id, "identify");
     // if (error == 0)
@@ -177,14 +177,14 @@ char *check_channel_for_sub(int channel_id, int next_avail_reserved) {
     }
 }
 
-void init_subs() {
+void domInitSubs() {
     int address;
     int nextAvailableChannel = 1; // next channel to assign to in reserved space
 
     // reserve the first 20 (extra space in case there's something else on this bus) for subs and scan the rest of the keyspace
     for (address = 21; address < 127; address++)
     {
-        char *result = check_channel_for_sub(address, nextAvailableChannel);
+        char *result = domCheckChannelForSub(address, nextAvailableChannel);
         ESP_LOGD(TAG, "RETURN RESPONSE: %s", result);
         int responseError = 0;
         if (result[0] == '-')
@@ -217,7 +217,7 @@ void init_subs() {
         ESP_LOGD(TAG, "SCANNING FOR MORE SUBS, %d/%d connected", connectedSubs, TARGET_SUBS);
         // subs will take 200ms before rebooting, delay at least 300ms
         vTaskDelay(500 / portTICK_PERIOD_MS);
-        init_subs();
+        domInitSubs();
     }
     else
     {
