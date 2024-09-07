@@ -24,7 +24,7 @@ void domSetup()
     // delay so I can read serial output in time
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    ESP_LOGD(TAG, "i2c init");
+    ESP_LOGI(TAG, "dom i2c init");
 
     i2c_master_bus_config_t i2c_bus_conf = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
