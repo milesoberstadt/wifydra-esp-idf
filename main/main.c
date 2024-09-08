@@ -32,6 +32,7 @@ void app_main(void)
         domSetup();
     } else {
         ESP_LOGI(TAG, "SUB MODE START");
+        subSetup();
     }
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     // wifictl_mgmt_ap_start();

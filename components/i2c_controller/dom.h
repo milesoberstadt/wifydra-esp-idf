@@ -9,3 +9,7 @@ void domInitSubs(void);
 char *domReadWire(int channel, int bytesToRead);
 
 int domWriteWire(int channel, char *dataInput);
+
+int *probeChannels(int *num_channels);
+
+void domSetChannel(int channel);

@@ -10,6 +10,7 @@
 #include "config.h"
 #include "i2c_controller.h"
 
+// TODO: Try to actually use this and the enums again once things are working
 char *sub_connection_error_tToString(sub_connection_error_t error) {
     // these need to align with the order in the sub_connection_error_t
     switch (error) {
@@ -27,7 +28,6 @@ char *sub_connection_error_tToString(sub_connection_error_t error) {
         return "00";
     }
 }
-
 
 bool is_alpha_numeric(const char *str) {
     const char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -53,12 +53,6 @@ bool is_alpha_numeric(const char *str) {
         i++;
     }
     return true;
-}
-
-
-
-void subSetup() {
-
 }
 
 char* concatenateStrings(int numArgs, ...) {

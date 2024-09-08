@@ -4,7 +4,7 @@
 #include <sys/random.h>
 #include "driver/i2c_slave.h"
 #include "esp_log.h"
-// Include FreeRTOS for delay
+// Include FreeRTOS for threading
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
