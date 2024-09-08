@@ -1,42 +1,9 @@
-# ESP32 Wi-Fi Penetration Tool
+# Wifydra in ESP IDF
 
-This project introduces an universal tool for ESP32 platform for implementing various Wi-Fi attacks. It provides some common functionality that is commonly used in Wi-Fi attacks and makes implementing new attacks a bit simpler. It also includes Wi-Fi attacks itself like capturing PMKIDs from handshakes, or handshakes themselves by different methods like starting rogue duplicated AP or sending deauthentication frames directly, etc...
-
-Obviously cracking is not part of this project, as ESP32 is not sufficient to crack hashes in effective way. The rest can be done on this small, cheap, low-power SoC.
-
-<p align="center">
-    <img src="doc/images/logo.png" alt="Logo">
-</p>
-
-## Features
-- **PMKID capture**
-- **WPA/WPA2 handshake capture** and parsing
-- **Deauthentication attacks** using various methods
-- **Denial of Service attacks**
-- Formatting captured traffic into **PCAP format**
-- Parsing captured handshakes into **HCCAPX file** ready to be cracked by Hashcat
-- Passive handshake sniffing
-- Easily extensible framework for new attacks implementations
-- Management AP for easy configuration on the go using smartphone for example
-- And more...
-
-### Demo video
-[![Demonstration Youtube video](https://img.youtube.com/vi/9I3BxRu86GE/0.jpg)](https://www.youtube.com/watch?v=9I3BxRu86GE)
-
-
-## Usage
-1. [Build](#Build) and [flash](#Flash) project onto ESP32 (DevKit or module)
-1. Power ESP32
-1. Management AP is started automatically after boot
-1. Connect to this AP\
-By default: 
-*SSID:* `ManagementAP` and *password:* `mgmtadmin`
-1. In browser open `192.168.4.1` and you should see a web client to configure and control tool like this:
-
-    ![Web client UI](doc/images/ui-config.png)
+I'm building this project atop [@risinek's esp32-wifi-penetration-tool](https://github.com/risinek/esp32-wifi-penetration-tool) to build a Wifydra fork with improved capabilities. Supposedly, the Arduino libraries that scan for SSIDs on the ESP32 are not fixed channel and hopping is still occurring while listening for responses. This would mean the Wifydra in its current implementation has all sub nodes scanning and channel hopping and each respond with a filtered list to their assigned channel.
 
 ## Build
-This project is currently developed using ESP-IDF 4.1 (commit `5ef1b390026270503634ac3ec9f1ec2e364e23b2`). It may be broken on newer version.
+This project is currently developed using ESP-IDF 5.1. It may be broken on newer version.
 
 Project can be built in the usual ESP-IDF way:
 
@@ -49,6 +16,8 @@ Legacy method using `make` is not supported by this project.
 ## Flash
 If you have setup ESP-IDF, the easiest way is to use `idf.py flash`.
 
+You may get an error here if your selected ESP32 chips are different, running `idf.py set-target esp32c3` substituting your specifiic module. This should require another build before flashing.
+
 In case you don't want to setup whole ESP-IDF, you can use pre-build binaries included in [`build/`](build/) and flash them using [`esptool.py`](https://github.com/espressif/esptool) (requires Python).
 
 Example command (follow instructions in [esptool repo](https://github.com/espressif/esptool)):
@@ -57,6 +26,23 @@ esptool.py -p /dev/ttyS5 -b 115200 --after hard_reset write_flash --flash_mode d
 ```
 
 On Windows you can use official [Flash Download Tool](https://www.espressif.com/en/support/download/other-tools).
+
+## Logging
+I would HIGHLY recommend installing the ESP-IDF, it comes with a monitor tool which provides much better output than a standard console application. Running `idf.py monitor` will connect to your device over the USB UART port and run an interactive application which allows you to restart the ESP32 among other things.
+
+You can set your log filters with `idf.py monitor --print_filter="i2c_comm:*"` for instance will print all log levels for the tag `i2c_comm`.
+
+Missing debug and verbose logs? I had that problem too, here's what to do to fix it:
+
+* `idf.py menuconfig`
+* -> Component config
+* -> Log
+* -> Log Level
+* -> Default log verbosity
+* Press S to save
+* Press Esc to close menu
+* Press Q to close the application
+
 
 ## Documentation
 ### Wi-Fi attacks
