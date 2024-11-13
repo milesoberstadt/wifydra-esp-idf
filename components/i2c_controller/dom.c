@@ -35,7 +35,6 @@ void domSetup()
         .scl_io_num = 22,
         .sda_io_num = 21,
         .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
     };
 
     // int foundChannels = 0;
