@@ -23,7 +23,7 @@
 
 #include "i2c_controller.h"
 
-static const char* TAG = "main";
+// static const char* TAG = "main";
 
 void app_main(void)
 {

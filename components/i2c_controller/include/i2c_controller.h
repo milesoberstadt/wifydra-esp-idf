@@ -1,3 +1,6 @@
+#ifndef __I2C_CONTROLLER_H__
+#define __I2C_CONTROLLER_H__
+
 typedef enum {
     Unhandled,
     NoDevice,
@@ -20,3 +23,5 @@ char* concatenateStrings(int count, ...);
 bool is_alpha_numeric(const char *str);
 
 char *sub_connection_error_tToString(sub_connection_error_t error);
+
+#endif // __I2C_CONTROLLER_H__

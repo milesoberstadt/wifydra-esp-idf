@@ -1,15 +1,3 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/random.h>
-#include "driver/i2c_slave.h"
-#include "esp_log.h"
-// Include FreeRTOS for threading
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-
-#include "config.h"
-#include "i2c_controller.h"
 #include "sub.h"
 
 // fun fact, if two subs generate the same i2cChannel AND the same secretMessage pair, they will behave as the same entity
@@ -34,12 +22,19 @@ void subSetup()
     //     i2cChannel = 29;
     //     preferences.putBool("tested_collision", true);
     // }
-    i2cChannel = randInRange(21, 127);
-    generateIdentity(secretMessage);
-    ESP_LOGD(TAG, "New identity: %s", secretMessage);
+    // i2cChannel = randInRange(21, 127);
+    // generateIdentity(secretMessage);
+    // ESP_LOGD(TAG, "New identity: %s", secretMessage);
 
-    subReinit();
-    ESP_LOGI(TAG, "joined i2c channel %d", i2cChannel);
+    // subReinit();
+    // ESP_LOGI(TAG, "joined i2c channel %d", i2cChannel);
+    i2c_slave_init();
+    i2c_start_receive();
+
+    for (int i = 0; i < DEVICES_COUNT; i++)
+    {
+        i2c_send_message_slave(msg_req_dev, i);
+    }
 
     // Wire.begin(i2cChannel);
     // Wire.onReceive(receiveEvent);

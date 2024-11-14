@@ -1,14 +1,3 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
-#include "driver/i2c_master.h"
-#include "esp_log.h"
-// Include FreeRTOS for delay
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-
-#include "config.h"
-#include "i2c_controller.h"
 #include "dom.h"
 
 static uint32_t i2c_frequency = 100 * 1000;
@@ -24,19 +13,18 @@ bool i2c_dev_initialized = false;
 
 void domSetup()
 {
-    // delay so I can read serial output in time
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-
     ESP_LOGI(TAG, "dom i2c init");
 
-    i2c_master_bus_config_t i2c_bus_conf = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = I2C_NUM_0,
-        .scl_io_num = 22,
-        .sda_io_num = 21,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
+    bool ret =  i2c_init();
+    if (!ret)
+    {
+        ESP_LOGE(TAG, "Failed to initialize I2C Master");
+        return;
+    }
+    ESP_LOGI(TAG, "Initialization complete");
+
+    // FIXME: this was added as a test, but errors out, possibly because connection isn't complete?
+    // i2c_send_message_master(msg_screen_toggle, 0);
 
     // int foundChannels = 0;
     // int nextAvailableChannel = 1;
@@ -48,11 +36,11 @@ void domSetup()
     // }
     // ESP_LOGI(TAG, "Found %d channels", foundChannels);
     
-    if (i2c_new_master_bus(&i2c_bus_conf, &tool_bus_handle) != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to create I2C bus");
-        return;
-    }
+    // if (i2c_new_master_bus(&i2c_bus_conf, &tool_bus_handle) != ESP_OK)
+    // {
+    //     ESP_LOGE(TAG, "Failed to create I2C bus");
+    //     return;
+    // }
     // for (int i = 0; i < foundChannels; i++)
     // {
     //     ESP_LOGI(TAG, "Channel %d: 0x%02x", i + 1, channels[i]);
@@ -60,7 +48,7 @@ void domSetup()
     // }
     // free(channels);
     
-    domInitSubs();
+    // domInitSubs();
 }
 
 int *probeChannels(int *num_channels)
